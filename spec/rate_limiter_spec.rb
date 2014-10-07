@@ -1,11 +1,12 @@
 require 'spec_helper'
 
 describe RateLimiter do
-  it 'has a version number' do
-    expect(RateLimiter::VERSION).not_to be nil
-  end
+  let(:app) { lambda { |env| [200, {'Content-Type' => 'text/plain'}, 'OK'] } }
+  subject { RateLimiter::Middleware.new(app) }
 
-  it 'does something useful' do
-    expect(false).to eq(true)
+  before { get '/' }
+
+  it 'should send the correct response' do
+    expect(last_response.body).to eq('OK')
   end
 end
