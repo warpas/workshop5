@@ -19,4 +19,11 @@ describe RateLimiter do
   it 'should accept the passed limit' do
     expect(last_response.header).to include("X-RateLimit-Limit" => 100)
   end
+
+  it 'should decrease the limit with subsequent requests' do
+    expect(last_response.header).to include("X-RateLimit-Remaining" => 99)
+    get '/'
+    get '/'
+    expect(last_response.header).to include("X-RateLimit-Remaining" => 97)
+  end
 end
