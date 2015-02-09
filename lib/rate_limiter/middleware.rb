@@ -5,7 +5,9 @@ module RateLimiter
     end
 
     def call(env)
-      response = @app.call(env)
+      status, headers, response = @app.call(env)
+      headers["X-RateLimit-Limit"] = "60"
+      [status, headers, response]
     end
   end
 end
