@@ -3,7 +3,7 @@ require 'spec_helper'
 describe RateLimiter do
   let(:app) do
     app = lambda { |env| [200, {'Content-Type' => 'text/plain'}, 'OK'] }
-    RateLimiter::Middleware.new(app, { limit: 100 })
+    RateLimiter::Middleware.new(app, { limit: "100" })
   end
 
   before { get '/' }
@@ -17,13 +17,13 @@ describe RateLimiter do
   end
 
   it 'should accept the passed limit' do
-    expect(last_response.header).to include("X-RateLimit-Limit" => 100)
+    expect(last_response.header).to include("X-RateLimit-Limit" => "100")
   end
 
   it 'should decrease the limit with subsequent requests' do
-    expect(last_response.header).to include("X-RateLimit-Remaining" => 99)
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
     get '/'
     get '/'
-    expect(last_response.header).to include("X-RateLimit-Remaining" => 97)
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
   end
 end
