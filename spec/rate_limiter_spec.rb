@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'timecop'
 
 describe RateLimiter do
   let(:app) do
@@ -30,5 +31,11 @@ describe RateLimiter do
     100.times { get '/' }
     expect(last_response.status).to eq(429)
     expect(last_response.body).to_not eq('OK')
+  end
+
+  it 'should reset the limit after required time' do
+    Timecop.travel(Time.now + 3601)
+    get '/'
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
   end
 end

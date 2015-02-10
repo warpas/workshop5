@@ -23,6 +23,7 @@ GEM
     rspec-mocks (3.1.2)
       rspec-support (~> 3.1.0)
     rspec-support (3.1.1)
+    timecop (0.7.1)
 
 PLATFORMS
   ruby
@@ -33,3 +34,4 @@ DEPENDENCIES
   rake (~> 10.0)
   rate_limiter!
   rspec
+  timecop
