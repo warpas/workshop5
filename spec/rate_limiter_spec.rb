@@ -3,8 +3,11 @@ require 'timecop'
 
 describe RateLimiter do
   let(:app) do
-    app = lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
-    Rack::Lint.new(RateLimiter::Middleware.new(app, { limit: "100", reset_in: "7200" }))
+    Rack::Builder.app do
+      use Rack::Lint
+      use RateLimiter::Middleware, limit: 100, reset_in: 7200
+      run lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
+    end
   end
 
   before { get '/' }
