@@ -7,10 +7,11 @@ module RateLimiter
     end
 
     def call(env)
-      @remaining -= 1
+      @remaining -= 1 if @remaining > 0
       status, headers, response = @app.call(env)
       headers["X-RateLimit-Limit"] = @limit
       headers["X-RateLimit-Remaining"] = @remaining.to_s
+      status = '429 Too Many Requests' if @remaining == 0
       [status, headers, response]
     end
   end
