@@ -29,5 +29,6 @@ describe RateLimiter do
   it 'should exceed' do
     100.times { get '/' }
     expect(last_response.status).to eq(429)
+    expect(last_response.body).to_not eq('OK')
   end
 end
