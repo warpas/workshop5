@@ -26,7 +26,7 @@ describe RateLimiter do
     expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
   end
 
-  it 'should exceed' do
+  it 'should prevent requests to the app once the limit is exceed' do
     100.times { get '/' }
     expect(last_response.status).to eq(429)
     expect(last_response.body).to_not eq('OK')
