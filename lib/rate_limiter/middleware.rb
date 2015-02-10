@@ -7,6 +7,8 @@ module RateLimiter
     end
 
     def call(env)
+      @reset = Time.now + 3600 if @remaining == @limit.to_i
+      @remaining = @limit.to_i if Time.now > @reset
       @remaining -= 1 if @remaining > 0
       if @remaining == 0
         status = '429 Too Many Requests'
@@ -17,6 +19,7 @@ module RateLimiter
       end
       headers["X-RateLimit-Remaining"] = @remaining.to_s
       headers["X-RateLimit-Limit"] = @limit
+      headers["X-RateLimit-Reset"] = @reset.to_s
       [status, headers, response]
     end
   end
