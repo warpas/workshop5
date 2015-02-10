@@ -8,13 +8,15 @@ module RateLimiter
 
     def call(env)
       @remaining -= 1 if @remaining > 0
-      status, headers, response = @app.call(env)
-      headers["X-RateLimit-Limit"] = @limit
-      headers["X-RateLimit-Remaining"] = @remaining.to_s
       if @remaining == 0
         status = '429 Too Many Requests'
+        headers = { 'Content-Type' => 'text/plain' }
         response = ['Too Many Requests']
+      else
+        status, headers, response = @app.call(env)
       end
+      headers["X-RateLimit-Remaining"] = @remaining.to_s
+      headers["X-RateLimit-Limit"] = @limit
       [status, headers, response]
     end
   end
