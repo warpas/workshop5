@@ -2,8 +2,8 @@ require 'spec_helper'
 
 describe RateLimiter do
   let(:app) do
-    app = lambda { |env| [200, {'Content-Type' => 'text/plain'}, 'OK'] }
-    RateLimiter::Middleware.new(app, { limit: "100" })
+    app = lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
+    Rack::Lint.new(RateLimiter::Middleware.new(app, { limit: "100" }))
   end
 
   before { get '/' }
@@ -22,8 +22,7 @@ describe RateLimiter do
 
   it 'should decrease the limit with subsequent requests' do
     expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
-    get '/'
-    get '/'
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
+    3.times { get '/' }
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
   end
 end
