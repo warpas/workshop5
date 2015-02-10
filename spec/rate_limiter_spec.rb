@@ -4,7 +4,7 @@ require 'timecop'
 describe RateLimiter do
   let(:app) do
     app = lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
-    Rack::Lint.new(RateLimiter::Middleware.new(app, { limit: "100" }))
+    Rack::Lint.new(RateLimiter::Middleware.new(app, { limit: "100", reset_in: "7200" }))
   end
 
   before { get '/' }
@@ -34,7 +34,7 @@ describe RateLimiter do
   end
 
   it 'should reset the limit after required time' do
-    Timecop.travel(Time.now + 3601)
+    Timecop.travel(Time.now + 7201)
     get '/'
     expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
   end

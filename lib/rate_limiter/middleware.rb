@@ -4,10 +4,11 @@ module RateLimiter
       @app       = app
       @limit     = options[:limit].to_s || "60"
       @remaining = @limit.to_i
+      @resetIn   = options[:reset_in].to_i || 3600
     end
 
     def call(env)
-      @reset = Time.now + 3600 if @remaining == @limit.to_i
+      @reset = Time.now + @resetIn if @remaining == @limit.to_i
       @remaining = @limit.to_i if Time.now > @reset
       @remaining -= 1 if @remaining > 0
       if @remaining == 0
