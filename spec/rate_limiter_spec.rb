@@ -41,4 +41,10 @@ describe RateLimiter do
     get '/'
     expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
   end
+
+  it 'should always update the required reset time' do
+    Timecop.travel(Time.now + 7201)
+    3.times { get '/' }
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
+  end
 end

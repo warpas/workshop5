@@ -9,7 +9,10 @@ module RateLimiter
 
     def call(env)
       @reset = Time.now + @resetIn if @remaining == @limit
-      @remaining = @limit if Time.now > @reset
+      if Time.now > @reset
+        @remaining = @limit
+        @reset = Time.now + @resetIn
+      end
       @remaining -= 1 if @remaining > 0
       if @remaining == 0
         prevent_access
