@@ -47,4 +47,14 @@ describe RateLimiter do
     3.times { get '/' }
     expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
   end
+
+  it 'should have seperate limits for different clients' do
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
+    4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
+    3.times { get '/', {}, "REMOTE_ADDR" => "10.0.42.1" }
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
+    4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "92")
+  end
 end

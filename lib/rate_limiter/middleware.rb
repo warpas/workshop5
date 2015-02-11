@@ -3,17 +3,12 @@ module RateLimiter
     def initialize(app, options = {})
       @app       = app
       @limit     = options[:limit].to_i || 60
-      @remaining = @limit
       @resetIn   = options[:reset_in].to_i || 3600
+      @clients   = {}
     end
 
     def call(env)
-      @reset = Time.now + @resetIn if @remaining == @limit
-      if Time.now > @reset
-        @remaining = @limit
-        @reset = Time.now + @resetIn
-      end
-      @remaining -= 1 if @remaining > 0
+      @clients[env["REMOTE_ADDR"]] = calculate_remaining(env["REMOTE_ADDR"])
       if @remaining == 0
         prevent_access
       else
@@ -24,6 +19,16 @@ module RateLimiter
     end
 
     private
+
+    def calculate_remaining(address)
+      if !@clients[address] || Time.now > @reset
+        @reset = Time.now + @resetIn
+        @remaining = @limit
+      elsif @clients[address]
+        @remaining = @clients[address]
+      end
+      @remaining -= 1 if @remaining > 0
+    end
 
     def prevent_access
       @status = '429 Too Many Requests'
