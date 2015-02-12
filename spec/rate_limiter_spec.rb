@@ -57,4 +57,13 @@ describe RateLimiter do
     4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
     expect(last_response.header).to include("X-RateLimit-Remaining" => "92")
   end
+
+  it 'should have seperate reset timers for different clients' do
+    3.times { get '/' }
+    Timecop.travel(Time.now + 3601)
+    4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+    Timecop.travel(Time.now + 3601)
+    get '/'
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
+  end
 end

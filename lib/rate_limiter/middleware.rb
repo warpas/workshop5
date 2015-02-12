@@ -8,7 +8,9 @@ module RateLimiter
     end
 
     def call(env)
-      @clients[env["REMOTE_ADDR"]] = calculate_remaining(env["REMOTE_ADDR"])
+      calculate_remaining(env["REMOTE_ADDR"])
+      @clients[env["REMOTE_ADDR"]] = { remaining: @remaining,
+                                       reset:     @reset }
       if @remaining == 0
         prevent_access
       else
@@ -21,11 +23,11 @@ module RateLimiter
     private
 
     def calculate_remaining(address)
-      if !@clients[address] || Time.now > @reset
+      if !@clients[address] || Time.now > @clients[address][:reset]
         @reset = Time.now + @resetIn
         @remaining = @limit
       elsif @clients[address]
-        @remaining = @clients[address]
+        @remaining = @clients[address][:remaining]
       end
       @remaining -= 1 if @remaining > 0
     end
