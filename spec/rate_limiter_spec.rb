@@ -16,36 +16,45 @@ describe RateLimiter do
     expect(last_response.body).to eq('OK')
   end
 
-  it 'should have the right header' do
-    expect(last_response.header).to include("X-RateLimit-Limit")
+  describe 'Limit' do
+    it 'should be present in header' do
+      expect(last_response.header).to include("X-RateLimit-Limit")
+    end
+
+    it 'should reflect the value passed' do
+      expect(last_response.header).to include("X-RateLimit-Limit" => "100")
+    end
   end
 
-  it 'should accept the passed limit' do
-    expect(last_response.header).to include("X-RateLimit-Limit" => "100")
-  end
+  describe 'Remaining' do
+    it 'should be decreased with subsequent requests' do
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
+      3.times { get '/' }
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
+    end
 
-  it 'should decrease the limit with subsequent requests' do
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
-    3.times { get '/' }
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
-  end
+    it 'should prevent requests to the app once it reaches zero' do
+      100.times { get '/' }
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "0")
+      expect(last_response.status).to eq(429)
+      expect(last_response.body).to_not eq('OK')
+    end
 
-  it 'should prevent requests to the app once the limit is exceed' do
-    100.times { get '/' }
-    expect(last_response.status).to eq(429)
-    expect(last_response.body).to_not eq('OK')
-  end
+    describe 'Reset' do
+      it 'should occur after required amount of time passed' do
+        Timecop.travel(Time.now + 7201)
+        get '/'
+        expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
+      end
 
-  it 'should reset the limit after required time' do
-    Timecop.travel(Time.now + 7201)
-    get '/'
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
-  end
-
-  it 'should always update the required reset time' do
-    Timecop.travel(Time.now + 7201)
-    3.times { get '/' }
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
+      describe 'Timer' do
+        it 'should always update after the reset' do
+          Timecop.travel(Time.now + 7201)
+          3.times { get '/' }
+          expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
+        end
+      end
+    end
   end
 
   it 'should have seperate limits for different clients' do
