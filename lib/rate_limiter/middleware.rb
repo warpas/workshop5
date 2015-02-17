@@ -1,15 +1,18 @@
 module RateLimiter
   class Middleware
-    def initialize(app, options = {})
+    def initialize(app, options = {}, &block)
       @app       = app
       @limit     = options[:limit].to_i || 60
       @resetIn   = options[:reset_in].to_i || 3600
       @clients   = {}
+      @block     = block
     end
 
     def call(env)
-      calculate_remaining(env["REMOTE_ADDR"])
-      @clients[env["REMOTE_ADDR"]] = { remaining: @remaining,
+      api_token = @block.call(env) if @block
+      client_id = api_token || env["REMOTE_ADDR"]
+      calculate_remaining(client_id)
+      @clients[client_id] = { remaining: @remaining,
                                        reset:     @reset }
       if @remaining == 0
         prevent_access
