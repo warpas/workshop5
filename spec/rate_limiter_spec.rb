@@ -40,6 +40,16 @@ describe RateLimiter do
       expect(last_response.body).to_not eq('OK')
     end
 
+    it 'should have seperate values for different clients' do
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
+      4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
+      3.times { get '/', {}, "REMOTE_ADDR" => "10.0.42.1" }
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
+      4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+      expect(last_response.header).to include("X-RateLimit-Remaining" => "92")
+    end
+
     describe 'Reset' do
       it 'should occur after required amount of time passed' do
         Timecop.travel(Time.now + 7201)
@@ -53,26 +63,16 @@ describe RateLimiter do
           3.times { get '/' }
           expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
         end
+
+        it 'should be seperate for different clients' do
+          3.times { get '/' }
+          Timecop.travel(Time.now + 3601)
+          4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+          Timecop.travel(Time.now + 3601)
+          get '/'
+          expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
+        end
       end
     end
-  end
-
-  it 'should have seperate limits for different clients' do
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
-    4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
-    3.times { get '/', {}, "REMOTE_ADDR" => "10.0.42.1" }
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "97")
-    4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "92")
-  end
-
-  it 'should have seperate reset timers for different clients' do
-    3.times { get '/' }
-    Timecop.travel(Time.now + 3601)
-    4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
-    Timecop.travel(Time.now + 3601)
-    get '/'
-    expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
   end
 end
