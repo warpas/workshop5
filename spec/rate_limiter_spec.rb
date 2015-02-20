@@ -3,8 +3,11 @@ require 'timecop'
 
 describe RateLimiter do
   let(:app) do
-    app = lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
-    Rack::Lint.new(RateLimiter::Middleware.new(app, { limit: 100, reset_in: 7200 }) { |env| Rack::Request.new(env).params["api_token"] })
+    Rack::Builder.app do
+      use Rack::Lint
+      use RateLimiter::Middleware, limit: 100, reset_in: 7200
+      run lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
+    end
   end
 
   before { get '/' }
@@ -30,13 +33,6 @@ describe RateLimiter do
       expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
     end
 
-    it 'should prevent requests to the app once it reaches zero' do
-      100.times { get '/' }
-      expect(last_response.header).to include("X-RateLimit-Remaining" => "0")
-      expect(last_response.status).to eq(429)
-      expect(last_response.body).to_not eq('OK')
-    end
-
     it 'should have seperate values for different clients' do
       expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
       4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
@@ -47,13 +43,30 @@ describe RateLimiter do
       expect(last_response.header).to include("X-RateLimit-Remaining" => "92")
     end
 
-    it 'should have seperate values for differently distinguished clients' do
-      2.times { get '/', { 'api_token' => '47FUfXweoM9MlRev3LHTahi6' } }
-      expect(last_response.header).to include("X-RateLimit-Remaining" => "98")
-      5.times { get '/', { 'api_token' => 'bo2qc2tHNikfPmehfxTz2wBt' } }
-      expect(last_response.header).to include("X-RateLimit-Remaining" => "95")
-      4.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
-      expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
+    describe 'Custom differentiation' do
+      let(:app) do
+        Rack::Builder.app do
+          use Rack::Lint
+          use RateLimiter::Middleware, limit: 100, reset_in: 7200 do
+            |env| Rack::Request.new(env).params["api_token"]
+          end
+          run lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
+        end
+      end
+
+      it 'should have seperate values' do
+        2.times { get '/', { 'api_token' => '47FUfXweoM9MlRev3LHTahi6' } }
+        expect(last_response.header).to include("X-RateLimit-Remaining" => "98")
+        5.times { get '/', { 'api_token' => 'bo2qc2tHNikfPmehfxTz2wBt' } }
+        expect(last_response.header).to include("X-RateLimit-Remaining" => "95")
+        4.times { get '/', { 'api_token' => 'XEsoCAq6bXE6PX6quIAt06QZ' } }
+        expect(last_response.header).to include("X-RateLimit-Remaining" => "96")
+      end
+
+      it 'should not accept users without it' do
+        2.times { get '/', {}, "REMOTE_ADDR" => "10.0.0.1" }
+        expect(last_response.header).to_not include("X-RateLimit-Remaining")
+      end
     end
 
     describe 'Reset' do
@@ -79,6 +92,32 @@ describe RateLimiter do
           expect(last_response.header).to include("X-RateLimit-Remaining" => "99")
         end
       end
+    end
+  end
+
+  it 'should prevent requests to the app once it reaches zero' do
+    100.times { get '/' }
+    expect(last_response.header).to include("X-RateLimit-Remaining" => "0")
+    expect(last_response.status).to eq(429)
+    expect(last_response.body).to_not eq('OK')
+  end
+
+  describe 'headers' do
+    let(:app) do
+      Rack::Builder.app do
+        use Rack::Lint
+        use RateLimiter::Middleware, limit: 100, reset_in: 7200 do
+          nil
+        end
+        run lambda { |env| [200, {'Content-Type' => 'text/plain'}, ['OK']] }
+      end
+    end
+
+    it 'should not be added if block passed returns nil' do
+      2.times { get '/', {}, "REMOTE_ADDR" => '95.124.24.129' }
+      expect(last_response.header).to_not include("X-RateLimit-Limit")
+      expect(last_response.header).to_not include("X-RateLimit-Remaining")
+      expect(last_response.body).to eq('OK')
     end
   end
 end
